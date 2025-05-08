@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encriptación y Desencriptación de Archivos</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Librerías de criptografía -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsencrypt/3.2.1/jsencrypt.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/forge/0.10.0/forge.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Encriptación y Desencriptación de Archivos</h1>
+        
+        <div class="tab">
+            <button class="tablinks active" onclick="openTab(event, 'asymmetric')">Encriptación Asimétrica</button>
+            <button class="tablinks" onclick="openTab(event, 'symmetric')">Encriptación Simétrica</button>
+            <button class="tablinks" onclick="openTab(event, 'fileReader')">Lector de Archivos</button>
+            <button class="tablinks" onclick="openTab(event, 'kleopatra')">Integración con Kleopatra</button>
+        </div>
+        
+        <!-- Encriptación Asimétrica -->
+        <div id="asymmetric" class="tabcontent" style="display: block;">
+            <h2>Encriptación / Desencriptación Asimétrica</h2>
+            
+            <div class="input-group">
+                <label for="asymAlgorithm">Algoritmo:</label>
+                <select id="asymAlgorithm">
+                    <option value="aes">AES</option>
+                    <option value="blowfish">Blowfish</option>
+                    <option value="des">DES</option>
+                    <option value="tripledes">3DES</option>
+                </select>
+            </div>
+            
+            <div class="key-container">
+                <div>
+                    <div class="input-group">
+                        <label for="publicKey">Clave Pública:</label>
+                        <textarea id="publicKey" rows="5" placeholder="Pega tu clave pública aquí"></textarea>
+                        <button onclick="generateKeyPair()">Generar Par de Claves</button>
+                    </div>
+                </div>
+                <div>
+                    <div class="input-group">
+                        <label for="privateKey">Clave Privada:</label>
+                        <textarea id="privateKey" rows="5" placeholder="Pega tu clave privada aquí"></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="input-group">
+                <label for="asymFileInput">Seleccionar archivo:</label>
+                <input type="file" id="asymFileInput">
+            </div>
+            
+            <div class="input-group">
+                <label for="asymTextInput">Texto a encriptar/desencriptar:</label>
+                <textarea id="asymTextInput" rows="5" placeholder="Escribe o pega el texto aquí"></textarea>
+            </div>
+            
+            <button onclick="encryptAsymmetric()">Encriptar</button>
+            <button onclick="decryptAsymmetric()">Desencriptar</button>
+            
+            <div class="status" id="asymStatus"></div>
+            
+            <div class="result" id="asymResult"></div>
+            
+            <div class="input-group">
+                <label for="asymSaveFileName">Nombre del archivo para guardar resultado:</label>
+                <input type="text" id="asymSaveFileName" placeholder="nombre_archivo.enc">
+                <button onclick="saveAsymResult()">Guardar Resultado</button>
+            </div>
+        </div>
+        
+        <!-- Encriptación Simétrica -->
+        <div id="symmetric" class="tabcontent">
+            <h2>Encriptación / Desencriptación Simétrica</h2>
+            
+            <div class="input-group">
+                <label for="symAlgorithm">Algoritmo:</label>
+                <select id="symAlgorithm">
+                    <option value="aes">AES</option>
+                    <option value="blowfish">Blowfish</option>
+                    <option value="des">DES</option>
+                    <option value="tripledes">3DES</option>
+                </select>
+            </div>
+            
+            <div class="key-container">
+                <div>
+                    <div class="input-group">
+                        <label for="primaryKey">Clave de Encriptación:</label>
+                        <input type="text" id="primaryKey" placeholder="Introduce tu contraseña para encriptar/desencriptar">
+                    </div>
+                </div>
+                <div>
+                    <div class="input-group">
+                        <label for="secondaryKey">Vector de Inicialización (IV):</label>
+                        <input type="text" id="secondaryKey" placeholder="Dejarlo vacío para generación automática">
+                        <button onclick="generateSymmetricKeys()">Generar Claves Aleatorias</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="input-group">
+                <label for="symFileInput">Seleccionar archivo:</label>
+                <input type="file" id="symFileInput">
+            </div>
+            
+            <div class="input-group">
+                <label for="symTextInput">Texto a encriptar/desencriptar:</label>
+                <textarea id="symTextInput" rows="5" placeholder="Escribe o pega el texto aquí"></textarea>
+            </div>
+            
+            <button onclick="encryptSymmetric()">Encriptar</button>
+            <button onclick="decryptSymmetric()">Desencriptar</button>
+            
+            <div class="status" id="symStatus"></div>
+            
+            <div class="result" id="symResult"></div>
+            
+            <div class="input-group">
+                <label for="symSaveFileName">Nombre del archivo para guardar resultado:</label>
+                <input type="text" id="symSaveFileName" placeholder="nombre_archivo.enc">
+                <button onclick="saveSymResult()">Guardar Resultado</button>
+            </div>
+        </div>
+        
+        <!-- Lector de Archivos -->
+        <div id="fileReader" class="tabcontent">
+            <h2>Lector de Archivos</h2>
+            
+            <div class="input-group">
+                <label for="fileToRead">Seleccionar archivo para leer:</label>
+                <input type="file" id="fileToRead">
+                <button onclick="readFile()">Leer Archivo</button>
+            </div>
+            
+            <div class="input-group">
+                <label for="fileType">Tipo de archivo:</label>
+                <select id="fileType">
+                    <option value="text">Texto</option>
+                    <option value="binary">Binario</option>
+                    <option value="hex">Hexadecimal</option>
+                </select>
+            </div>
+            
+            <h3>Contenido del archivo:</h3>
+            <div class="file-content" id="fileContent"></div>
+            
+            <div class="input-group">
+                <label for="fileAnalysis">Análisis del archivo:</label>
+                <div class="result" id="fileAnalysis"></div>
+            </div>
+        </div>
+        
+        <!-- Integración con Kleopatra -->
+        <div id="kleopatra" class="tabcontent">
+            <h2>Integración con Kleopatra</h2>
+            
+            <div class="input-group">
+                <p>Esta sección permite trabajar con archivos exportados desde Kleopatra.</p>
+                <p>Los archivos de Kleopatra suelen estar en formato PGP o con extensiones .asc, .gpg</p>
+            </div>
+            
+            <div class="input-group">
+                <label for="kleopatraFile">Seleccionar archivo de Kleopatra:</label>
+                <input type="file" id="kleopatraFile">
+            </div>
+            
+            <div class="input-group">
+                <label for="kleopatraPassphrase">Contraseña (si es necesaria):</label>
+                <input type="text" id="kleopatraPassphrase" placeholder="Contraseña para desbloquear la clave">
+            </div>
+            
+            <button onclick="importFromKleopatra()">Importar Clave</button>
+            <button onclick="verifyKleopatraSignature()">Verificar Firma</button>
+            
+            <div class="status" id="kleopatraStatus"></div>
+            
+            <div class="input-group">
+                <label for="exportFormat">Formato de exportación:</label>
+                <select id="exportFormat">
+                    <option value="pgp">PGP</option>
+                    <option value="asc">ASCII Armored (.asc)</option>
+                    <option value="gpg">GPG</option>
+                </select>
+                <button onclick="exportForKleopatra()">Exportar para Kleopatra</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts JavaScript -->
+    <script src="scripts/crypto-utils.js"></script>
+    <script src="scripts/asymmetric.js"></script>
+    <script src="scripts/symmetric.js"></script>
+    <script src="scripts/file-reader.js"></script>
+    <script src="scripts/kleopatra.js"></script>
+    <script src="scripts/kali-integration.js"></script>
+    <script src="scripts/main.js"></script>
+</body>
+</html>
