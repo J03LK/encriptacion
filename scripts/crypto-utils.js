@@ -34,18 +34,46 @@ function readFileAsType(file, type) {
     });
 }
 
-// Función para guardar un archivo
+// Reemplazar en crypto-utils.js (paste-2.txt)
 function saveFile(content, fileName, mimeType = 'application/json') {
-    const blob = new Blob([content], { type: mimeType });
+    // Asegurarse de que el contenido es tratado correctamente según su tipo
+    let blobContent;
+    
+    if (typeof content === 'object') {
+        // Si es un objeto, convertirlo a JSON
+        blobContent = JSON.stringify(content, null, 2);
+    } else {
+        // Si es texto o ya está en formato string
+        blobContent = content;
+    }
+    
+    const blob = new Blob([blobContent], { type: mimeType });
     const url = URL.createObjectURL(blob);
     
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+        // Crear un elemento de enlace invisible
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.style.display = 'none';
+        
+        // Añadir al DOM, hacer clic y luego limpiar
+        document.body.appendChild(a);
+        a.click();
+        
+        // Breve retraso antes de limpiar para asegurar que la descarga comience
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 100);
+        
+        return true;
+    } catch (e) {
+        console.error("Error al guardar el archivo:", e);
+        alert("Error al guardar el archivo: " + e.message);
+        URL.revokeObjectURL(url);
+        return false;
+    }
 }
 
 // Función para formatear tamaño de archivo
@@ -135,4 +163,20 @@ function detectFileType(content, fileName) {
 // Función para generar una clave aleatoria
 function generateRandomKey(length = 16) {
     return CryptoJS.lib.WordArray.random(length).toString(CryptoJS.enc.Hex);
+}
+// Añadir a crypto-utils.js
+function readFileAsArrayBuffer(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        
+        reader.onload = function(event) {
+            resolve(event.target.result);
+        };
+        
+        reader.onerror = function() {
+            reject(new Error('Error al leer el archivo'));
+        };
+        
+        reader.readAsArrayBuffer(file);
+    });
 }
