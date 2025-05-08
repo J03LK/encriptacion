@@ -345,7 +345,7 @@ function readFileAsArrayBuffer(file) {
 // Guardar resultado de encriptación/desencriptación simétrica
 function saveSymResult() {
     const resultText = document.getElementById('symResult').textContent;
-    let fileName = document.getElementById('symSaveFileName').value || 'archivo_desencriptado.txt';
+    let fileName = document.getElementById('symSaveFileName').value || 'archivo_desencriptado';
     
     if (!resultText) {
         showStatus('symStatus', 'No hay resultado para guardar', true);
@@ -353,54 +353,159 @@ function saveSymResult() {
     }
     
     try {
-        let blob;
-        // Verificar si el contenido es Base64 (como parece ser tu caso)
+        // Comprobar si es contenido en Base64
         const isBase64 = /^[A-Za-z0-9+/=]+$/.test(resultText.trim());
         
         if (isBase64) {
-            // Convertir de Base64 a binario
-            const byteCharacters = atob(resultText);
-            const byteArrays = [];
-            
-            // Procesar en bloques para evitar problemas con archivos grandes
-            for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-                const slice = byteCharacters.slice(offset, offset + 512);
+            // Convertir de Base64 a binario con manejo correcto de caracteres
+            try {
+                const byteCharacters = atob(resultText);
+                const byteArrays = [];
                 
-                const byteNumbers = new Array(slice.length);
-                for (let i = 0; i < slice.length; i++) {
-                    byteNumbers[i] = slice.charCodeAt(i);
+                // Procesar en bloques para evitar problemas con archivos grandes
+                for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+                    const slice = byteCharacters.slice(offset, offset + 512);
+                    
+                    const byteNumbers = new Array(slice.length);
+                    for (let i = 0; i < slice.length; i++) {
+                        byteNumbers[i] = slice.charCodeAt(i);
+                    }
+                    
+                    const byteArray = new Uint8Array(byteNumbers);
+                    byteArrays.push(byteArray);
                 }
                 
-                const byteArray = new Uint8Array(byteNumbers);
-                byteArrays.push(byteArray);
+                // Determinar el tipo MIME basado en la extensión del archivo
+                let mimeType = 'application/octet-stream'; // Por defecto binario
+                if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) {
+                    mimeType = 'image/jpeg';
+                } else if (fileName.endsWith('.png')) {
+                    mimeType = 'image/png';
+                } else if (fileName.endsWith('.txt')) {
+                    mimeType = 'text/plain';
+                } else if (fileName.endsWith('.pdf')) {
+                    mimeType = 'application/pdf';
+                }
+                
+                // Crear Blob con el contenido binario y el tipo MIME correcto
+                const blob = new Blob(byteArrays, { type: mimeType });
+                
+                // Crear enlace de descarga
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                
+                // Añadir a la página, hacer clic y luego limpiar
+                document.body.appendChild(a);
+                a.click();
+                
+                // Limpiar después de un momento
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+                
+                showStatus('symStatus', `Archivo guardado como ${fileName}`);
+            } catch (e) {
+                console.error("Error procesando Base64:", e);
+                showStatus('symStatus', 'Error al procesar Base64: ' + e.message, true);
             }
-            
-            // Crear Blob con el contenido binario
-            blob = new Blob(byteArrays);
         } else {
             // Si no es Base64, guardar como texto plano
-            blob = new Blob([resultText], { type: 'text/plain' });
+            const blob = new Blob([resultText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+            
+            showStatus('symStatus', `Archivo guardado como ${fileName}`);
         }
-        
-        // Crear enlace de descarga
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        
-        // Añadir a la página, hacer clic y luego limpiar
-        document.body.appendChild(a);
-        a.click();
-        
-        // Limpiar después de un momento
-        setTimeout(() => {
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }, 100);
-        
-        showStatus('symStatus', `Archivo guardado como ${fileName}`);
     } catch (e) {
         console.error("Error guardando archivo:", e);
         showStatus('symStatus', 'Error al guardar: ' + e.message, true);
     }
 }
+// Función para detectar el tipo de archivo basado en la firma de bytes
+function detectFileType(bytes) {
+    // Firmas comunes de archivos
+    const signatures = [
+        { bytes: [0xFF, 0xD8, 0xFF], mime: 'image/jpeg' },           // JPEG
+        { bytes: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A], mime: 'image/png' },  // PNG
+        { bytes: [0x47, 0x49, 0x46, 0x38], mime: 'image/gif' },      // GIF
+        { bytes: [0x25, 0x50, 0x44, 0x46], mime: 'application/pdf' }, // PDF
+        { bytes: [0x50, 0x4B, 0x03, 0x04], mime: 'application/zip' }, // ZIP
+        // Más firmas pueden ser añadidas aquí
+    ];
+    
+    // Comprobar si los primeros bytes coinciden con alguna firma
+    for (const sig of signatures) {
+        if (bytes.length >= sig.bytes.length) {
+            let match = true;
+            for (let i = 0; i < sig.bytes.length; i++) {
+                if (bytes[i] !== sig.bytes[i]) {
+                    match = false;
+                    break;
+                }
+            }
+            if (match) {
+                return sig.mime;
+            }
+        }
+    }
+    
+    // Si no se encuentra ninguna firma, comprobar si es texto
+    const isText = isTextFile(bytes);
+    if (isText) {
+        return 'text/plain';
+    }
+    
+    // Por defecto, devolver tipo genérico
+    return 'application/octet-stream';
+}
+
+// Función para detectar si el contenido es texto
+function isTextFile(bytes, sampleSize = 100) {
+    // Comprueba los primeros 'sampleSize' bytes
+    const size = Math.min(bytes.length, sampleSize);
+    let textCount = 0;
+    
+    // Comprobar si hay caracteres no imprimibles
+    for (let i = 0; i < size; i++) {
+        const b = bytes[i];
+        // Caracteres ASCII imprimibles, tabulación, nueva línea, retorno de carro
+        if ((b >= 32 && b <= 126) || b === 9 || b === 10 || b === 13) {
+            textCount++;
+        }
+    }
+    
+    // Si al menos el 90% son caracteres imprimibles, probablemente es texto
+    return (textCount / size) > 0.9;
+}
+
+// Función para obtener la extensión de archivo basada en el tipo MIME
+function getExtensionFromFileType(mimeType) {
+    const mimeToExt = {
+        'image/jpeg': '.jpg',
+        'image/png': '.png',
+        'image/gif': '.gif',
+        'application/pdf': '.pdf',
+        'application/zip': '.zip',
+        'text/plain': '.txt',
+        'application/octet-stream': '.bin'
+    };
+    
+    return mimeToExt[mimeType] || '';
+}
+
+// Variables globales para mantener el blob desencriptado
+window.decryptedBlob = null;
+window.decryptedFileType = null;
